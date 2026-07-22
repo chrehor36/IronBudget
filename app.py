@@ -29,7 +29,9 @@ FOLDER = os.path.dirname(os.path.abspath(sys.argv[0]))
 DEBUG = "--debug" in sys.argv or bool(os.environ.get("IRONBUDGET_DEBUG"))
 assistant.set_folder_getter(lambda: FOLDER)
 
-_ai_warming_up = False  # True from the moment the startup warm-up thread begins until it finishes
+_ai_warming_up = False  # True from the moment the warm-up thread begins until it finishes
+_warmup_lock = threading.Lock()
+_warmup_started = False  # guards against starting the (expensive) warm-up thread more than once
 
 
 class Api:
@@ -238,6 +240,21 @@ class Api:
     def is_ai_warming_up(self):
         return {"warming_up": _ai_warming_up}
 
+    def start_ai_warmup(self):
+        """Loading the model costs real RAM/CPU (it's a multi-GB local LLM),
+        so it should only ever be paid by a session that actually shows
+        intent to chat - opening the chat panel, or reaching the
+        chat-only onboarding flow - not unconditionally at every launch.
+        The JS side calls this at those two moments. Guarded so repeatedly
+        opening/closing the chat panel only ever starts one thread."""
+        global _warmup_started
+        with _warmup_lock:
+            if _warmup_started:
+                return {"started": False}
+            _warmup_started = True
+        threading.Thread(target=_warm_up_ai, daemon=True).start()
+        return {"started": True}
+
     def assistant_send(self, message, phase):
         """phase: "onboarding" (household + CSV setup chat) or "main" (the
         persistent in-app guide). Each phase keeps its own history so the
@@ -282,8 +299,10 @@ def bind_drag_drop(window, api):
 
 def _warm_up_ai():
     """Loads the model and evaluates its fixed prompt prefix in the
-    background at startup, so the user's real first chat message doesn't
-    pay that cost - a no-op if the model hasn't been downloaded yet."""
+    background, so the user's real first chat message doesn't pay that cost -
+    a no-op if the model hasn't been downloaded yet. Only ever invoked via
+    Api.start_ai_warmup(), itself only called once the user shows real intent
+    to chat - never unconditionally at launch."""
     global _ai_warming_up
     try:
         if not local_llm.is_model_ready(FOLDER):
@@ -308,7 +327,6 @@ def main():
         text_select=True,
     )
     api._window = window
-    threading.Thread(target=_warm_up_ai, daemon=True).start()
 
     def on_loaded():
         bind_drag_drop(window, api)

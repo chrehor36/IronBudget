@@ -33,6 +33,14 @@ def is_model_ready(folder):
     return os.path.exists(path) and os.path.getsize(path) > _MIN_VALID_BYTES
 
 
+def is_loaded():
+    """True only if the model is already resident in memory this process -
+    never triggers a load itself. Lets a feature use the model opportunistically
+    (only if it happens to already be warm from real chat use) without ever
+    being the thing that first pulls a multi-GB model into RAM."""
+    return _llm is not None
+
+
 def download_model(folder, progress_cb):
     """Blocking - call off the main thread. Downloads to a .part file first
     so a half-finished download can never be mistaken for a ready model."""

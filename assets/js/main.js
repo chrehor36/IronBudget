@@ -156,6 +156,10 @@ async function runFirstRunFlow() {
   const form = document.getElementById("onboarding-form");
   const input = document.getElementById("onboarding-input");
   screen.style.display = "flex";
+  // Onboarding is chat-only from the first real reply onward, so warming the
+  // model here (rather than waiting for the user to actually type) keeps
+  // that first reply fast without paying the cost at every future launch.
+  IB_API.call("start_ai_warmup");
 
   IB_CHAT.addMessage(messages, "assistant", "Hi, I'm Dale! Welcome to IronBudget. Who's this budget for - what's your name?");
   input.focus();
@@ -219,6 +223,10 @@ function wireChatPanel() {
   toggle.addEventListener("click", () => {
     panel.classList.toggle("open");
     if (panel.classList.contains("open")) {
+      // Model load only ever happens for a session that actually opens
+      // chat - the backend no-ops any call after the first, so it's safe
+      // to just call this every time the panel opens.
+      IB_API.call("start_ai_warmup");
       input.focus();
       if (!greeted) {
         greeted = true;

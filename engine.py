@@ -349,9 +349,16 @@ def generate_dashboard_insight(agg, folder):
     """One AI-generated sentence summarizing the dashboard, using the same
     local-model-first/Claude-fallback pattern as build_ai_suggestions.
     Returns None (never raises) if neither backend is available or the call
-    fails - the frontend falls back to its own plain-computed sentence."""
+    fails - the frontend falls back to its own plain-computed sentence.
+
+    Deliberately checks is_loaded(), not just is_model_ready(): the dashboard
+    is the very first thing shown at launch, so if this called the local
+    model unconditionally it would force a multi-GB model load on every
+    single app open, even for someone who never touches chat. Only piggybacks
+    on the model when it's already warm from real chat use this session;
+    otherwise this is skipped entirely and the plain computed banner stands."""
     import local_llm
-    has_local = local_llm.is_model_ready(folder)
+    has_local = local_llm.is_model_ready(folder) and local_llm.is_loaded()
     has_key = bool(os.environ.get("ANTHROPIC_API_KEY"))
     if not has_local and not has_key:
         return None
