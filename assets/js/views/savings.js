@@ -72,15 +72,121 @@ function ib_openSavingsGoalModal(agg, existing, onSaved) {
   });
 }
 
+// Seeds the necessary/discretionary checkbox modal before the user has ever
+// reviewed it - a guess from category names alone, never the final word.
+// The user's own edits (persisted via save_spend_classification) always win
+// once they've reviewed it; this regex only matters for the very first,
+// unconfirmed pass.
+const IB_NECESSARY_HINT = /mortgage|\brent\b|utilit|insurance|health|medical|grocer|\bauto\b|loan|\btax(es)?\b|child|daycare|tuition|educat|phone|internet|\bbill|\bgas\b|fuel|doctor|dentist|pharmacy|prescription/i;
+
+function ib_defaultNecessary(cats) {
+  return cats.filter((c) => IB_NECESSARY_HINT.test(c));
+}
+
+function ib_renderSpendSplit(host, agg, classification, goal, onChange) {
+  const catSorted = agg.cat_sorted || [];
+  const cats = catSorted.map(([c]) => c);
+  const necessarySet = new Set(classification ? classification.necessary_categories : ib_defaultNecessary(cats));
+  let necessaryTotal = 0, discretionaryTotal = 0;
+  const discretionaryRows = [];
+  catSorted.forEach(([c, v]) => {
+    if (necessarySet.has(c)) necessaryTotal += v;
+    else { discretionaryTotal += v; discretionaryRows.push([c, v]); }
+  });
+  const necMonthly = necessaryTotal / agg.MONTHS;
+  const discMonthly = discretionaryTotal / agg.MONTHS;
+  const isDefault = !classification;
+
+  let html = `<div class="card">
+    <h2>Where you could cut back</h2>
+    ${isDefault ? `<div class="note" style="font-size:11.5px; color:var(--ink-muted); margin:-4px 0 12px;">Best-guess split based on category names - review it below to make this accurate.</div>` : ""}
+    <div class="kpi-row" style="margin-bottom:14px;">
+      <div class="kpi-tile"><div class="label">Necessary / mo</div><div class="value">${IB_CHARTS.fmtMoney(necMonthly)}</div><div class="note">Housing, bills, insurance, groceries...</div></div>
+      <div class="kpi-tile"><div class="label">Discretionary / mo</div><div class="value" style="color:var(--status-warning);">${IB_CHARTS.fmtMoney(discMonthly)}</div><div class="note">The flexible part - where cuts are actually possible</div></div>
+    </div>`;
+
+  if (discretionaryRows.length) {
+    html += `<div style="font-size:12px; text-transform:uppercase; letter-spacing:0.03em; color:var(--ink-secondary); margin:16px 0 8px;">Biggest discretionary categories</div>
+      <div id="split-bar"></div>`;
+  }
+
+  if (discMonthly > 0) {
+    const cuts = [0.1, 0.2, 0.3];
+    html += `<div style="font-size:12px; text-transform:uppercase; letter-spacing:0.03em; color:var(--ink-secondary); margin:16px 0 8px;">If you trimmed discretionary spending...</div>
+      <table class="data-table"><thead><tr><th>Cut</th><th class="num">Extra saved / mo</th>${goal ? `<th class="num">New goal ETA</th>` : ""}</tr></thead><tbody>`;
+    cuts.forEach((pct) => {
+      const extra = discMonthly * pct;
+      let etaCell = "";
+      if (goal) {
+        const pace = ib_monthlyPace(agg, goal) + extra;
+        const remaining = Math.max(0, goal.target_amount - goal.current_amount);
+        if (remaining <= 0) {
+          etaCell = `<td class="num">already reached</td>`;
+        } else if (pace > 0) {
+          const months = remaining / pace;
+          const eta = new Date();
+          eta.setMonth(eta.getMonth() + Math.ceil(months));
+          etaCell = `<td class="num">${eta.toLocaleString(undefined, { month: "short", year: "numeric" })}</td>`;
+        } else {
+          etaCell = `<td class="num">-</td>`;
+        }
+      }
+      html += `<tr><td>${(pct * 100).toFixed(0)}%</td><td class="num">${IB_CHARTS.fmtMoney(extra)}</td>${etaCell}</tr>`;
+    });
+    html += `</tbody></table>`;
+  }
+
+  html += `<button class="btn" id="split-edit" style="margin-top:14px;">Review classification</button>`;
+  host.innerHTML = html;
+
+  if (discretionaryRows.length) {
+    const total = discretionaryTotal;
+    const barData = discretionaryRows.slice(0, 8).map(([label, value]) => ({
+      label, value, pct: total ? (value / total) * 100 : 0,
+    }));
+    IB_CHARTS.horizontalBar(document.getElementById("split-bar"), barData);
+  }
+  document.getElementById("split-edit").addEventListener("click", () =>
+    ib_openSpendSplitModal(agg, classification, onChange));
+}
+
+function ib_openSpendSplitModal(agg, existing, onSaved) {
+  const dlg = document.getElementById("modal-household");
+  const cats = (agg.cat_sorted || []).map(([c]) => c);
+  const necessarySet = new Set(existing ? existing.necessary_categories : ib_defaultNecessary(cats));
+  const checks = cats.map((c) => `
+    <label style="display:flex; align-items:center; gap:8px; padding:5px 0; font-size:13px; color:var(--ink-secondary);">
+      <input type="checkbox" value="${c}" ${necessarySet.has(c) ? "checked" : ""}> ${c}
+    </label>`).join("");
+  dlg.innerHTML = `<h3>Necessary vs. discretionary</h3>
+    <p style="font-size:12.5px;">Check anything that's a required, non-negotiable bill. Leave the rest unchecked - that's what counts as discretionary spending that could potentially be cut.</p>
+    <div class="field">
+      <div style="max-height:280px; overflow-y:auto; border:1px solid var(--border-hairline); border-radius:6px; padding:6px 10px;">${checks}</div>
+    </div>
+    <div class="actions"><button class="btn" id="split-cancel">Cancel</button><button class="btn primary" id="split-save">Save</button></div>`;
+  dlg.showModal();
+  document.getElementById("split-cancel").addEventListener("click", () => dlg.close());
+  document.getElementById("split-save").addEventListener("click", async () => {
+    const necessary_categories = [...dlg.querySelectorAll('input[type="checkbox"]:checked')].map((el) => el.value);
+    await IB_API.call("save_spend_classification", necessary_categories);
+    dlg.close();
+    onSaved();
+  });
+}
+
 const IB_VIEW_SAVINGS = {
   title: "Savings",
   render(container, data) {
     const agg = data.agg;
     container.innerHTML = `<div class="page-header"><h1>Savings goal</h1>
       <div class="sub">Track progress toward a savings target, at the pace your data shows.</div></div>
-      <div id="savings-body"><div class="empty-state">Loading...</div></div>`;
+      <div id="savings-body"><div class="empty-state">Loading...</div></div>
+      <div id="split-body"></div>`;
 
-    IB_API.call("get_savings_goal").then((goal) => {
+    Promise.all([
+      IB_API.call("get_savings_goal"),
+      IB_API.call("get_spend_classification"),
+    ]).then(([goal, classification]) => {
       const host = document.getElementById("savings-body");
       if (!goal) {
         host.innerHTML = `<div class="empty-state">
@@ -89,9 +195,11 @@ const IB_VIEW_SAVINGS = {
         </div>`;
         document.getElementById("sg-set").addEventListener("click", () =>
           ib_openSavingsGoalModal(agg, null, () => IB_VIEW_SAVINGS.render(container, data)));
-        return;
+      } else {
+        ib_renderSavingsGoal(host, agg, goal, () => IB_VIEW_SAVINGS.render(container, data));
       }
-      ib_renderSavingsGoal(host, agg, goal, () => IB_VIEW_SAVINGS.render(container, data));
+      ib_renderSpendSplit(document.getElementById("split-body"), agg, classification, goal,
+        () => IB_VIEW_SAVINGS.render(container, data));
     });
   },
 };

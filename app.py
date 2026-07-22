@@ -87,6 +87,12 @@ class Api:
                         "error": f"That's more than your current surplus of ${cap:,.0f}/mo. Lower the budget or free up room elsewhere first."}
         return {"ok": True, "fun_money": settings.save_fun_money(FOLDER, fun_money), "error": None}
 
+    def get_spend_classification(self):
+        return settings.load_spend_classification(FOLDER)
+
+    def save_spend_classification(self, necessary_categories):
+        return {"ok": True, "classification": settings.save_spend_classification(FOLDER, necessary_categories)}
+
     # ---------- data ----------
     def _rebuild(self, extra_paths=None):
         paths = engine.gather_csv_paths(FOLDER)

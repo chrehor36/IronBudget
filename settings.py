@@ -105,3 +105,20 @@ def save_fun_money(folder, fun_money):
     data["fun_money"] = fun_money
     _save_raw(folder, data)
     return fun_money
+
+
+def load_spend_classification(folder):
+    return _load_raw(folder).get("spend_classification")
+
+
+def save_spend_classification(folder, necessary_categories):
+    """necessary_categories: list of category names the user has confirmed
+    are non-negotiable bills. Everything else is treated as discretionary -
+    the categories aren't stored, just which ones are necessary, so newly
+    appearing categories default to discretionary until explicitly marked
+    otherwise."""
+    classification = {"necessary_categories": necessary_categories}
+    data = _load_raw(folder)
+    data["spend_classification"] = classification
+    _save_raw(folder, data)
+    return classification
