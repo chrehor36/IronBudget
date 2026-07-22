@@ -1,9 +1,10 @@
 # IronBudget
 
 A private, offline budget dashboard. Turns your bank's CSV exports into a
-real budget dashboard with charts, trends, subscription tracking, and a
-local AI assistant you can chat with - all running on your own computer.
-Nothing about your finances is ever sent anywhere.
+real budget dashboard with charts, trends, subscription tracking, a savings
+goal tracker, a fun-money budget, and Dale - a local AI assistant you can
+chat with - all running on your own computer. Nothing about your finances
+is ever sent anywhere.
 
 ## Download
 
@@ -21,12 +22,15 @@ That's it - one file, no installer, no account, nothing else to set up.
 3. **Add your bank's CSV export(s).** Export transactions from your
    bank/card's website (any date range works), then either drag the file(s)
    onto the app or use the file picker it offers you.
-4. **The first time you use the AI assistant**, it downloads a ~2GB AI
-   model to your computer - this is one-time and happens automatically in
-   the background. Everything it does after that runs fully offline.
-5. **That's the whole setup.** From there: browse the dashboard, ask the
-   built-in assistant questions about your spending, correct any
-   miscategorized merchants, and export to Excel any time you want a copy.
+4. **The first time you open the chat assistant (Dale)**, it downloads a
+   ~2GB AI model to your computer - this is one-time and happens
+   automatically in the background. Everything it does after that runs
+   fully offline. If you never open chat, that download/model never runs
+   at all.
+5. **That's the whole setup.** From there: browse the dashboard, set a
+   savings goal or a fun-money budget, ask Dale questions about your
+   spending, correct any miscategorized merchants, and export to Excel any
+   time you want a copy.
 
 ## Sharing it with someone else
 
@@ -37,7 +41,7 @@ and points it at their own CSVs.
 ## Privacy
 
 Your transactions, categories, and chat history never leave your computer.
-The AI assistant is a small model that runs locally - not a cloud service.
-The only thing this app ever downloads from the internet is the AI model
-file itself (once) and an occasional small update to its list of known
-subscription services.
+Dale is a small AI model that runs locally - not a cloud service, and it
+only ever loads into memory once you actually open the chat panel. The
+only thing this app ever downloads from the internet is that AI model file
+itself, once, the first time you open chat.
