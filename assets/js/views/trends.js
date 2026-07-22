@@ -13,15 +13,18 @@ const IB_VIEW_TRENDS = {
     html += `<div class="card"><h2>Cumulative surplus</h2><div id="trend-cum"></div></div>`;
     container.innerHTML = html;
 
-    // Just one series while trip tracking is disabled - "raw" and
-    // "adjusted" are only different once trip spend gets excluded, and
-    // showing two legend entries for two identical, fully-overlapping
-    // lines was confusing rather than informative.
-    IB_CHARTS.lineChart(document.getElementById("trend-weekly"), labels, [
-      { label: "Weekly spending", color: "var(--series-1)", values: weeks.map((k) => agg.w_adj[k] || 0) },
-    ], { labelSkip: Math.max(1, Math.floor(weeks.length / 12)) });
-    IB_CHARTS.lineChart(document.getElementById("trend-cum"), labels, [
-      { label: "Cumulative surplus", color: "var(--series-2)", values: cumSeries },
-    ], { labelSkip: Math.max(1, Math.floor(weeks.length / 12)) });
+    // Bars, not a line: each week is a discrete total, not a continuous
+    // signal, so a bar per week is more honest than interpolating between
+    // points. Single series while trip tracking is disabled - "raw" and
+    // "adjusted" are only different once trip spend gets excluded.
+    IB_CHARTS.barChart(document.getElementById("trend-weekly"), labels, weeks.map((k) => agg.w_adj[k] || 0), {
+      labelSkip: Math.max(1, Math.floor(weeks.length / 12)),
+    });
+    // Stock-ticker style: filled area, colored by trend direction, with the
+    // running total called out at the last point like a live price tag.
+    IB_CHARTS.areaChart(document.getElementById("trend-cum"), labels, cumSeries, {
+      label: "Cumulative surplus",
+      labelSkip: Math.max(1, Math.floor(weeks.length / 12)),
+    });
   },
 };
