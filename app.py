@@ -70,7 +70,22 @@ class Api:
         return settings.load_fun_money(FOLDER)
 
     def save_fun_money(self, fun_money):
-        return {"ok": True, "fun_money": settings.save_fun_money(FOLDER, fun_money)}
+        # A fun money budget bigger than the actual monthly surplus is a
+        # budget that can't be honored without cutting into money already
+        # spoken for - reject it here (not just in the UI) so no caller,
+        # present or future, can slip a bigger number past this check.
+        with self._lock:
+            agg = self._data["agg"] if self._data else None
+        if agg is not None:
+            cap = agg["net_m"]
+            budget = fun_money.get("monthly_budget", 0) or 0
+            if cap <= 0:
+                return {"ok": False, "fun_money": None,
+                        "error": "There's no monthly surplus right now (expenses match or exceed income), so there's no room for a discretionary fun money budget."}
+            if budget > cap:
+                return {"ok": False, "fun_money": None,
+                        "error": f"That's more than your current surplus of ${cap:,.0f}/mo. Lower the budget or free up room elsewhere first."}
+        return {"ok": True, "fun_money": settings.save_fun_money(FOLDER, fun_money), "error": None}
 
     # ---------- data ----------
     def _rebuild(self, extra_paths=None):

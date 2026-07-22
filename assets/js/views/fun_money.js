@@ -44,22 +44,34 @@ function ib_openFunMoneyModal(agg, existing, onSaved) {
   const dlg = document.getElementById("modal-household");
   const cats = (agg.cat_sorted || []).map(([c]) => c);
   const selected = new Set(existing ? existing.categories : []);
+  const cap = agg.net_m;
   const checks = cats.map((c) => `
     <label style="display:flex; align-items:center; gap:8px; padding:5px 0; font-size:13px; color:var(--ink-secondary);">
       <input type="checkbox" value="${c}" ${selected.has(c) ? "checked" : ""}> ${c}
     </label>`).join("");
+  const capNote = cap > 0
+    ? `Can't exceed your current surplus of ${IB_CHARTS.fmtMoney(cap)}/mo.`
+    : "You don't have a monthly surplus right now, so a fun money budget can't be set until expenses come down or income goes up.";
   dlg.innerHTML = `<h3>${existing ? "Edit" : "Set up"} fun money</h3>
-    <div class="field"><label>Monthly budget</label><input type="number" id="fm-budget" value="${existing ? existing.monthly_budget : 300}" step="0.01"></div>
+    <div class="field"><label>Monthly budget</label><input type="number" id="fm-budget" value="${existing ? existing.monthly_budget : Math.max(0, Math.min(300, cap))}" step="0.01" max="${Math.max(0, cap)}"></div>
+    <div class="note" id="fm-cap-note" style="font-size:11.5px; color:var(--ink-muted); margin:-6px 0 12px;">${capNote}</div>
     <div class="field"><label>Categories that count as fun money</label>
       <div style="max-height:220px; overflow-y:auto; border:1px solid var(--border-hairline); border-radius:6px; padding:6px 10px;">${checks}</div>
     </div>
-    <div class="actions"><button class="btn" id="fm-cancel">Cancel</button><button class="btn primary" id="fm-save">Save</button></div>`;
+    <div class="note" id="fm-error" style="font-size:12.5px; color:var(--status-critical); margin-top:10px; display:none;"></div>
+    <div class="actions"><button class="btn" id="fm-cancel">Cancel</button><button class="btn primary" id="fm-save" ${cap <= 0 ? "disabled" : ""}>Save</button></div>`;
   dlg.showModal();
   document.getElementById("fm-cancel").addEventListener("click", () => dlg.close());
   document.getElementById("fm-save").addEventListener("click", async () => {
     const monthly_budget = parseFloat(document.getElementById("fm-budget").value) || 0;
     const categories = [...dlg.querySelectorAll('input[type="checkbox"]:checked')].map((el) => el.value);
-    await IB_API.call("save_fun_money", { monthly_budget, categories });
+    const result = await IB_API.call("save_fun_money", { monthly_budget, categories });
+    const errEl = document.getElementById("fm-error");
+    if (!result.ok) {
+      errEl.textContent = result.error || "Couldn't save that budget.";
+      errEl.style.display = "block";
+      return;
+    }
     dlg.close();
     onSaved();
   });
