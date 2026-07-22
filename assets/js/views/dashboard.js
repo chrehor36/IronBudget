@@ -13,7 +13,8 @@ const IB_VIEW_DASHBOARD = {
     html += `<div class="kpi-row">
       <div class="kpi-tile"><div class="label">Total income / mo</div><div class="value">${IB_CHARTS.fmtMoney(agg.inc_m)}</div><div class="note">Paychecks, refunds, interest</div></div>
       <div class="kpi-tile"><div class="label">Total expenses / mo</div><div class="value">${IB_CHARTS.fmtMoney(agg.exp_m)}</div><div class="note">Adjusted spend</div></div>
-      <div class="kpi-tile"><div class="label">Surplus / mo</div><div class="value ${agg.net_m >= 0 ? "" : ""}" style="color:${agg.net_m >= 0 ? "var(--status-good)" : "var(--status-critical)"}">${IB_CHARTS.fmtMoney(agg.net_m)}</div><div class="note">Income minus expenses</div></div>`;
+      <div class="kpi-tile"><div class="label">Surplus / mo</div><div class="value ${agg.net_m >= 0 ? "" : ""}" style="color:${agg.net_m >= 0 ? "var(--status-good)" : "var(--status-critical)"}">${IB_CHARTS.fmtMoney(agg.net_m)}</div><div class="note">Income minus expenses</div></div>
+      <div class="kpi-tile" id="dash-essentials-tile"><div class="label">Essentials / mo</div><div class="value">-</div><div class="note">Loading...</div></div>`;
     if (agg.has_transfers) {
       html += `<div class="kpi-tile"><div class="label">Moved between accounts / mo</div><div class="value">${IB_CHARTS.fmtMoney(agg.xfer_m)}</div><div class="note">${IB_CHARTS.fmtMoney(agg.xfer_total)} total across ${accts.length} accounts</div></div>`;
     }
@@ -76,6 +77,19 @@ const IB_VIEW_DASHBOARD = {
       tt += `<div class="note" style="margin-top:8px; color:var(--ink-muted);">Net out of pocket across all detected trips: ${IB_CHARTS.fmtMoney(netOop)}</div>`;
       host.innerHTML = tt;
     }
+
+    // Essentials classification is settings-driven (same source as the
+    // Savings page's "Where you could cut back" card) - fetched async so the
+    // rest of the dashboard doesn't wait on it.
+    IB_API.call("get_spend_classification").then((classification) => {
+      const cats = catSorted.map(([c]) => c);
+      const necessarySet = new Set(classification ? classification.necessary_categories : ib_defaultNecessary(cats));
+      const essentialsTotal = catSorted.reduce((sum, [c, v]) => sum + (necessarySet.has(c) ? v : 0), 0);
+      const tile = document.getElementById("dash-essentials-tile");
+      if (!tile) return;
+      tile.querySelector(".value").textContent = IB_CHARTS.fmtMoney(essentialsTotal / agg.MONTHS);
+      tile.querySelector(".note").textContent = "What it costs to live - see Savings for the full breakdown";
+    });
 
     // Swap the plain computed banner for an AI-generated one-sentence
     // summary once it's ready - keeps the instant fallback above so the
