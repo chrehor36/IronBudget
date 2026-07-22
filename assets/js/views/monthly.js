@@ -23,15 +23,29 @@ const IB_VIEW_MONTHLY = {
       <td class="num">${IB_CHARTS.fmtMoney(totInc - totExp)}</td><td class="num">${IB_CHARTS.fmtMoney(totXfer)}</td></tr>`;
     html += `</tbody></table></div>`;
     html += `<div class="card"><h2>Income vs expenses by month</h2><div id="monthly-bar"></div></div>`;
-    html += `<div class="card"><h2>Net cash flow by month</h2><div id="monthly-line"></div></div>`;
+    html += `<div class="card"><h2>Essentials vs. all expenses by month</h2><div id="monthly-essentials"></div></div>`;
     container.innerHTML = html;
 
     IB_CHARTS.groupedBar(document.getElementById("monthly-bar"), labels, [
       { label: "Income", color: "var(--series-2)", values: months.map((k) => agg.m_inc[k] || 0) },
       { label: "Expenses", color: "var(--series-1)", values: months.map((k) => agg.m_exp_adj[k] || 0) },
     ]);
-    IB_CHARTS.lineChart(document.getElementById("monthly-line"), labels, [
-      { label: "Net", color: "var(--series-5)", values: months.map((k) => (agg.m_inc[k] || 0) - (agg.m_exp_adj[k] || 0)) },
-    ]);
+
+    // Essentials classification is settings-driven (same source as the
+    // Savings page's "Where you could cut back" card) - fetched async so a
+    // never-configured household still sees the default-guess split instead
+    // of an empty chart.
+    IB_API.call("get_spend_classification").then((classification) => {
+      const cats = (agg.cat_sorted || []).map(([c]) => c);
+      const necessarySet = new Set(classification ? classification.necessary_categories : ib_defaultNecessary(cats));
+      const essentialsByMonth = months.map((k) => {
+        const byCat = (agg.m_cat_adj && agg.m_cat_adj[k]) || {};
+        return Object.entries(byCat).reduce((sum, [c, v]) => sum + (necessarySet.has(c) ? v : 0), 0);
+      });
+      IB_CHARTS.groupedBar(document.getElementById("monthly-essentials"), labels, [
+        { label: "All expenses", color: "var(--series-1)", values: months.map((k) => agg.m_exp_adj[k] || 0) },
+        { label: "Essentials", color: "var(--series-5)", values: essentialsByMonth },
+      ]);
+    });
   },
 };

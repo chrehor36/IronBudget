@@ -62,7 +62,16 @@ GET_SUMMARY_TOOL = {
     "type": "function",
     "function": {
         "name": "get_dashboard_summary",
-        "description": "Get the current budget's key numbers: income, expenses, surplus, top categories, the essentials-vs-discretionary spending split (use this for any question about necessities, essentials, what's required to live, or what could be cut), the user's savings goal progress (if set), and their fun money budget status (if set). Always call this - never search_merchants or search_transactions - for questions like these, since they're not merchant/transaction lookups.",
+        "description": "Get the current budget's key numbers: income, expenses, surplus, and the overall top spending categories over the whole period. Do NOT use this for questions about necessities/essentials, what's discretionary or could be cut, savings goals, or fun money - use get_essentials_and_goals for those instead, since this tool's category list is NOT the same thing as essentials.",
+        "parameters": {"type": "object", "properties": {}},
+    },
+}
+
+GET_ESSENTIALS_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_essentials_and_goals",
+        "description": "Get the essentials-vs-discretionary monthly spending split (essentials = what's required to live: housing, utilities, groceries, insurance, etc.), the user's savings goal progress (if set), and their fun money budget status (if set). Use this - never get_dashboard_summary, never search_merchants, never search_transactions - for ANY question containing words like necessities, essentials, needs, required, what could be cut, savings goal, or fun money.",
         "parameters": {"type": "object", "properties": {}},
     },
 }
@@ -155,7 +164,7 @@ SEARCH_MERCHANTS_TOOL = {
 }
 
 ONBOARDING_TOOLS = [SAVE_HOUSEHOLD_TOOL, OPEN_FILE_PICKER_TOOL, RESCAN_TOOL]
-MAIN_TOOLS = [GET_SUMMARY_TOOL, GET_SUGGESTIONS_TOOL, CORRECT_CATEGORY_TOOL, NAVIGATE_TOOL,
+MAIN_TOOLS = [GET_SUMMARY_TOOL, GET_ESSENTIALS_TOOL, GET_SUGGESTIONS_TOOL, CORRECT_CATEGORY_TOOL, NAVIGATE_TOOL,
               EXPORT_TOOL, OPEN_FILE_PICKER_TOOL, RESCAN_TOOL, SEARCH_TRANSACTIONS_TOOL, SEARCH_MERCHANTS_TOOL]
 
 ABOUT_IRONBUDGET = (
@@ -213,7 +222,10 @@ MAIN_SYSTEM = (
     "in-app assistant - brief, helpful, and able to act. You can check the "
     "budget's numbers, categorize transactions, fix a merchant's category, switch views, search or "
     "sort transactions/merchants, add more CSV files, or export to Excel, all via your tools. Use "
-    "get_dashboard_summary before answering questions about the numbers so you don't guess. Use "
+    "get_dashboard_summary before answering general questions about income/expenses/surplus/top "
+    "categories so you don't guess - but for necessities, essentials, what's discretionary or could "
+    "be cut, savings goals, or fun money, use get_essentials_and_goals instead, never "
+    "get_dashboard_summary's category list (it is NOT the same thing as essentials). Use "
     "search_transactions/search_merchants (not just describing results in words) whenever the user "
     "wants to find or sort something - it actually switches their screen to show it. Keep replies "
     "short - 1-3 sentences unless summarizing numbers. If a tool's result contains an \"error\", tell "
@@ -261,12 +273,12 @@ MAIN_FEWSHOT = [
     ]},
     {"role": "tool", "content": '{"top_categories_total_over_whole_period": [["Mortgage & Rent", 12916.16]]}'},
     {"role": "assistant", "content": "Your Mortgage & Rent spending totals $12,916.16."},
-    {"role": "user", "content": "what do i actually need to live, versus what could I cut?"},
+    {"role": "user", "content": "what are my necessities?"},
     {"role": "assistant", "content": None, "tool_calls": [
-        {"function": {"name": "get_dashboard_summary", "arguments": {}}}
+        {"function": {"name": "get_essentials_and_goals", "arguments": {}}}
     ]},
     {"role": "tool", "content": '{"essentials_per_month": 2200.0, "discretionary_per_month": 900.0, "top_discretionary_categories": [["Shopping", 300.0], ["Restaurants", 250.0]]}'},
-    {"role": "assistant", "content": "Essentials run about $2,200/mo; the other $900/mo is discretionary - mostly Shopping ($300) and Restaurants ($250), so that's where cutting back would have the most impact."},
+    {"role": "assistant", "content": "Essentials run about $2,200/mo total - things like housing, utilities, and groceries. The other $900/mo is discretionary, mostly Shopping ($300) and Restaurants ($250)."},
 ]
 
 
@@ -289,6 +301,18 @@ def _tool_dispatch(api, name, args):
             out["csv_file_count"] = len(engine.gather_csv_paths(api_folder()))
             return out
         if name == "get_dashboard_summary":
+            with api._lock:
+                if not api._data:
+                    return {"error": "No data loaded yet."}
+                agg = api._data["agg"]
+            return {
+                "income_per_month": round(agg["inc_m"], 2), "expenses_per_month": round(agg["exp_m"], 2),
+                "surplus_per_month": round(agg["inc_m"] - agg["exp_m"], 2),
+                "top_categories_total_over_whole_period": [(c, round(v, 2)) for c, v in agg["cat_sorted"][:5]],
+                "period": f"{agg['START']} to {agg['END']} ({agg['MONTHS']:.1f} months)",
+                "accounts": agg["accounts"],
+            }
+        if name == "get_essentials_and_goals":
             with api._lock:
                 if not api._data:
                     return {"error": "No data loaded yet."}
@@ -324,11 +348,6 @@ def _tool_dispatch(api, name, args):
                 }
 
             return {
-                "income_per_month": round(agg["inc_m"], 2), "expenses_per_month": round(agg["exp_m"], 2),
-                "surplus_per_month": round(agg["inc_m"] - agg["exp_m"], 2),
-                "top_categories_total_over_whole_period": [(c, round(v, 2)) for c, v in agg["cat_sorted"][:5]],
-                "period": f"{agg['START']} to {agg['END']} ({agg['MONTHS']:.1f} months)",
-                "accounts": agg["accounts"],
                 "essentials_per_month": split["essentials_per_month"],
                 "discretionary_per_month": split["discretionary_per_month"],
                 "top_discretionary_categories": split["top_discretionary_categories"],
