@@ -157,7 +157,7 @@ async function runFirstRunFlow() {
   const input = document.getElementById("onboarding-input");
   screen.style.display = "flex";
 
-  IB_CHAT.addMessage(messages, "assistant", "Hi! Welcome to IronBudget. Who's this budget for - what's your name?");
+  IB_CHAT.addMessage(messages, "assistant", "Hi, I'm Dale! Welcome to IronBudget. Who's this budget for - what's your name?");
   input.focus();
 
   form.addEventListener("submit", async (e) => {
@@ -223,7 +223,7 @@ function wireChatPanel() {
       if (!greeted) {
         greeted = true;
         IB_CHAT.addMessage(messages, "assistant",
-          "Hi, I'm your IronBudget assistant. Ask me about your numbers, or tell me to categorize things, add files, switch views, or export to Excel.");
+          "Hi, I'm Dale, your IronBudget assistant. Ask me about your numbers, or tell me to categorize things, add files, switch views, or export to Excel.");
       }
     }
   });

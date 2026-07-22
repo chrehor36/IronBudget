@@ -101,7 +101,7 @@ function ib_renderSpendSplit(host, agg, classification, goal, onChange) {
     <h2>Where you could cut back</h2>
     ${isDefault ? `<div class="note" style="font-size:11.5px; color:var(--ink-muted); margin:-4px 0 12px;">Best-guess split based on category names - review it below to make this accurate.</div>` : ""}
     <div class="kpi-row" style="margin-bottom:14px;">
-      <div class="kpi-tile"><div class="label">Necessary / mo</div><div class="value">${IB_CHARTS.fmtMoney(necMonthly)}</div><div class="note">Housing, bills, insurance, groceries...</div></div>
+      <div class="kpi-tile"><div class="label">Essentials / mo</div><div class="value">${IB_CHARTS.fmtMoney(necMonthly)}</div><div class="note">Housing, bills, insurance, groceries - what it costs to live</div></div>
       <div class="kpi-tile"><div class="label">Discretionary / mo</div><div class="value" style="color:var(--status-warning);">${IB_CHARTS.fmtMoney(discMonthly)}</div><div class="note">The flexible part - where cuts are actually possible</div></div>
     </div>`;
 
@@ -158,8 +158,8 @@ function ib_openSpendSplitModal(agg, existing, onSaved) {
     <label style="display:flex; align-items:center; gap:8px; padding:5px 0; font-size:13px; color:var(--ink-secondary);">
       <input type="checkbox" value="${c}" ${necessarySet.has(c) ? "checked" : ""}> ${c}
     </label>`).join("");
-  dlg.innerHTML = `<h3>Necessary vs. discretionary</h3>
-    <p style="font-size:12.5px;">Check anything that's a required, non-negotiable bill. Leave the rest unchecked - that's what counts as discretionary spending that could potentially be cut.</p>
+  dlg.innerHTML = `<h3>Essentials vs. discretionary</h3>
+    <p style="font-size:12.5px;">Check anything that's essential - an expense you need in order to live (housing, utilities, groceries, insurance...). Leave the rest unchecked - that's what counts as discretionary spending that could potentially be cut.</p>
     <div class="field">
       <div style="max-height:280px; overflow-y:auto; border:1px solid var(--border-hairline); border-radius:6px; padding:6px 10px;">${checks}</div>
     </div>
