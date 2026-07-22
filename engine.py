@@ -47,6 +47,17 @@ INCOME_CATS = ("Paycheck", "Interest Income", "State Tax", "Federal Tax", "Incom
 P2P_KEYWORDS = ["ZELLE", "VENMO", "CASH APP", "CASHAPP", "PAYPAL"]
 HOUSING_HINT = re.compile(r"rent|mortgage", re.I)
 
+# Seeds the essentials/discretionary split before the user has ever reviewed
+# it - kept identical to assets/js/views/savings.js's IB_NECESSARY_HINT so the
+# in-app assistant's answer always matches what the Savings page shows. Only
+# matters for the very first, unconfirmed pass - a saved classification
+# (settings.load_spend_classification) always wins once the user has one.
+NECESSARY_HINT = re.compile(
+    r"mortgage|\brent\b|utilit|insurance|health|medical|grocer|\bauto\b|loan|\btax(es)?\b|"
+    r"child|daycare|tuition|educat|phone|internet|\bbill|\bgas\b|fuel|doctor|dentist|pharmacy|prescription",
+    re.I,
+)
+
 ACCOUNT_HINTS = [("saving", "Savings"), ("checking", "Checking"), ("credit", "Credit Card"),
                  ("visa", "Credit Card"), ("mastercard", "Credit Card"), ("amex", "Credit Card"),
                  ("invest", "Investment"), ("brokerage", "Investment"), ("401k", "Retirement"),
@@ -548,6 +559,28 @@ def compute_aggregates(rows, detected_trips, home_state):
         "detected_trips": detected_trips, "home_state": home_state,
         "START": START, "END": END, "DAYS": DAYS, "MONTHS": MONTHS,
         "has_transfers": has_transfers,
+    }
+
+
+def default_necessary_categories(cat_sorted):
+    return [c for c, _ in cat_sorted if NECESSARY_HINT.search(c)]
+
+
+def essentials_breakdown(agg, necessary_categories=None):
+    """necessary_categories=None means "no saved classification yet" - fall
+    back to the same name-based guess the Savings page seeds its checkbox
+    modal with, so this always agrees with what's on screen."""
+    cat_sorted = agg["cat_sorted"]
+    necessary_set = (set(necessary_categories) if necessary_categories is not None
+                      else set(default_necessary_categories(cat_sorted)))
+    necessary_total = sum(v for c, v in cat_sorted if c in necessary_set)
+    discretionary_rows = [(c, v) for c, v in cat_sorted if c not in necessary_set]
+    discretionary_total = sum(v for _, v in discretionary_rows)
+    return {
+        "essentials_per_month": round(necessary_total / agg["MONTHS"], 2),
+        "discretionary_per_month": round(discretionary_total / agg["MONTHS"], 2),
+        "top_discretionary_categories": [(c, round(v / agg["MONTHS"], 2)) for c, v in discretionary_rows[:5]],
+        "using_default_guess": necessary_categories is None,
     }
 
 

@@ -14,6 +14,7 @@ import threading
 
 import engine
 import local_llm
+import settings
 
 
 # ------------------------- tool schemas -------------------------
@@ -61,7 +62,7 @@ GET_SUMMARY_TOOL = {
     "type": "function",
     "function": {
         "name": "get_dashboard_summary",
-        "description": "Get the current budget's key numbers (income, expenses, surplus, top categories) so you can answer questions about it accurately instead of guessing.",
+        "description": "Get the current budget's key numbers: income, expenses, surplus, top categories, the essentials-vs-discretionary spending split (use this for any question about necessities, essentials, what's required to live, or what could be cut), the user's savings goal progress (if set), and their fun money budget status (if set). Always call this - never search_merchants or search_transactions - for questions like these, since they're not merchant/transaction lookups.",
         "parameters": {"type": "object", "properties": {}},
     },
 }
@@ -102,7 +103,7 @@ NAVIGATE_TOOL = {
                 "view": {
                     "type": "string",
                     "enum": ["Dashboard", "Monthly", "Categories", "Trends", "Transfers",
-                              "Subscriptions", "Transactions", "AI & Categories"],
+                              "Subscriptions", "Savings", "Fun Money", "Transactions", "AI & Categories"],
                 }
             },
             "required": ["view"],
@@ -168,11 +169,14 @@ ABOUT_IRONBUDGET = (
     "a reimbursement deposit, and assigns spending categories. A category can come from the bank's "
     "own data, from an AI guess (which you can drive), or from the user correcting it by hand - "
     "corrections are remembered forever per-merchant via merchant memory, so the app gets more "
-    "accurate the more it's used. The 8 views in the sidebar: Dashboard (headline numbers, top "
+    "accurate the more it's used. The views in the sidebar: Dashboard (headline numbers, top "
     "category chart), Monthly (income vs. expenses by month), Categories (full spending "
     "breakdown), Trends (spending over time), Transfers (money moved between the user's own "
     "accounts - only shown if relevant), Subscriptions (merchants billing on a roughly monthly "
-    "cycle, auto-detected), Transactions (every transaction, searchable and sortable), and AI & "
+    "cycle, auto-detected), Savings (a user-set savings goal - target, current amount, progress, "
+    "pace, ETA - plus an essentials-vs-discretionary spending breakdown with what-if cut "
+    "scenarios), Fun Money (a user-set monthly discretionary budget tracked against categories "
+    "the user picks), Transactions (every transaction, searchable and sortable), and AI & "
     "Categories (categorization, browse and correct merchants). All AI features (chat, "
     "categorization) run on a local model embedded directly in the app - nothing is sent to the "
     "cloud for them."
@@ -257,6 +261,12 @@ MAIN_FEWSHOT = [
     ]},
     {"role": "tool", "content": '{"top_categories_total_over_whole_period": [["Mortgage & Rent", 12916.16]]}'},
     {"role": "assistant", "content": "Your Mortgage & Rent spending totals $12,916.16."},
+    {"role": "user", "content": "what do i actually need to live, versus what could I cut?"},
+    {"role": "assistant", "content": None, "tool_calls": [
+        {"function": {"name": "get_dashboard_summary", "arguments": {}}}
+    ]},
+    {"role": "tool", "content": '{"essentials_per_month": 2200.0, "discretionary_per_month": 900.0, "top_discretionary_categories": [["Shopping", 300.0], ["Restaurants", 250.0]]}'},
+    {"role": "assistant", "content": "Essentials run about $2,200/mo; the other $900/mo is discretionary - mostly Shopping ($300) and Restaurants ($250), so that's where cutting back would have the most impact."},
 ]
 
 
@@ -283,12 +293,48 @@ def _tool_dispatch(api, name, args):
                 if not api._data:
                     return {"error": "No data loaded yet."}
                 agg = api._data["agg"]
+            folder = api_folder()
+
+            classification = settings.load_spend_classification(folder)
+            necessary_categories = classification["necessary_categories"] if classification else None
+            split = engine.essentials_breakdown(agg, necessary_categories)
+
+            goal = settings.load_savings_goal(folder)
+            goal_summary = None
+            if goal:
+                pace = (agg["xfer_in_by_acct"].get(goal["account"], 0) / agg["MONTHS"]
+                        if goal.get("account") else agg["net_m"])
+                remaining = max(0, goal["target_amount"] - goal["current_amount"])
+                goal_summary = {
+                    "label": goal["label"], "current_amount": goal["current_amount"],
+                    "target_amount": goal["target_amount"], "remaining": round(remaining, 2),
+                    "monthly_pace": round(pace, 2),
+                    "months_to_goal": round(remaining / pace, 1) if pace > 0 and remaining > 0 else None,
+                }
+
+            fun_money = settings.load_fun_money(folder)
+            fun_money_summary = None
+            if fun_money and fun_money.get("categories"):
+                cur_month = agg["months"][-1] if agg["months"] else None
+                spent = (sum(agg["m_cat_adj"].get(cur_month, {}).get(c, 0) for c in fun_money["categories"])
+                         if cur_month else 0)
+                fun_money_summary = {
+                    "monthly_budget": fun_money["monthly_budget"], "spent_this_month": round(spent, 2),
+                    "remaining_this_month": round(fun_money["monthly_budget"] - spent, 2),
+                }
+
             return {
                 "income_per_month": round(agg["inc_m"], 2), "expenses_per_month": round(agg["exp_m"], 2),
                 "surplus_per_month": round(agg["inc_m"] - agg["exp_m"], 2),
                 "top_categories_total_over_whole_period": [(c, round(v, 2)) for c, v in agg["cat_sorted"][:5]],
                 "period": f"{agg['START']} to {agg['END']} ({agg['MONTHS']:.1f} months)",
                 "accounts": agg["accounts"],
+                "essentials_per_month": split["essentials_per_month"],
+                "discretionary_per_month": split["discretionary_per_month"],
+                "top_discretionary_categories": split["top_discretionary_categories"],
+                "essentials_classification_reviewed_by_user": not split["using_default_guess"],
+                "savings_goal": goal_summary,
+                "fun_money": fun_money_summary,
             }
         if name == "categorize_uncategorized":
             with api._lock:
