@@ -1,0 +1,27 @@
+# Personal data - never commit anyone's real financial info
+*.csv
+Archive (old exports)/
+ironbudget_settings.json
+ironbudget_memory.json
+
+# The embedded AI model - too large for git (2GB+), the app downloads it
+# itself on first run instead
+*.gguf
+
+# Build artifacts - regenerated from source, not meant to be tracked
+build/
+dist/
+*.spec
+__pycache__/
+*.pyc
+
+# Packaged executables - published via GitHub Releases instead of the repo
+IronBudget.exe
+IronBudget-debug.exe
+
+# Session/tool-local folders
+.claude/
+vm_share/
+
+# Superseded by README.md - described the old console/Excel/Ollama tool
+HOW TO USE IRONBUDGET.txt

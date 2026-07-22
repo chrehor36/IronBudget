@@ -1,0 +1,47 @@
+/* IronBudget theme tokens - computed against the app's real dark card
+   surface (#131a24), not eyeballed. See the plan doc for the contrast math. */
+:root {
+  color-scheme: dark;
+
+  /* surfaces */
+  --bg-void: #080b10;    /* sidebar */
+  --bg-page: #0a0e14;    /* page background behind cards */
+  --bg-card: #131a24;    /* card / panel / table surface */
+  --bg-card-hover: #182130;
+
+  /* ink */
+  --ink-primary: #eef2f7;    /* 15.55:1 on --bg-card */
+  --ink-secondary: #9fb0c3;  /* 7.89:1 */
+  --ink-muted: #7d90a6;      /* 5.34:1 - axis labels, table secondary text */
+
+  /* accent - chrome only, never a data-series color */
+  --accent: #38e0ff;        /* 11.05:1 on --bg-card, 12.23:1 on --bg-page */
+  --accent-glow: rgba(56, 224, 255, 0.25);
+  --accent-dim: rgba(56, 224, 255, 0.14);
+
+  /* categorical chart palette - fixed order, never cycled */
+  --series-1: #3987e5;
+  --series-2: #008300;
+  --series-3: #d55181;
+  --series-4: #c98500;
+  --series-5: #199e70;
+  --series-6: #d95926;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+
+  /* status (fixed, never themed, never reused for a series) */
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+
+  /* structural */
+  --border-hairline: rgba(255, 255, 255, 0.06);
+  --border-panel: rgba(56, 224, 255, 0.14);
+  --gridline: #1c2530;
+
+  /* layout */
+  --sidebar-width: 240px;
+  --radius: 8px;
+  --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
