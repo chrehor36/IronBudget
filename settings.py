@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """IronBudget settings persistence - household names + the computed budget title."""
+import datetime as dt
 import json
 import os
 import re
@@ -75,3 +76,32 @@ def save_settings(folder, people):
     data["household"] = household
     _save_raw(folder, data)
     return household
+
+
+def load_savings_goal(folder):
+    return _load_raw(folder).get("savings_goal")
+
+
+def save_savings_goal(folder, goal):
+    """goal: {"label", "current_amount", "target_amount", "account"}. There's
+    no real account balance in the CSVs (only transactions), so current_amount
+    is a manual snapshot the user re-enters as it changes - updated_at records
+    when that snapshot was last taken."""
+    goal = dict(goal)
+    goal["updated_at"] = dt.date.today().isoformat()
+    data = _load_raw(folder)
+    data["savings_goal"] = goal
+    _save_raw(folder, data)
+    return goal
+
+
+def load_fun_money(folder):
+    return _load_raw(folder).get("fun_money")
+
+
+def save_fun_money(folder, fun_money):
+    """fun_money: {"monthly_budget", "categories": [...]}."""
+    data = _load_raw(folder)
+    data["fun_money"] = fun_money
+    _save_raw(folder, data)
+    return fun_money

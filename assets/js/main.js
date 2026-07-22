@@ -2,7 +2,8 @@ window.__ironbudget = window.__ironbudget || {};
 
 const IB_VIEWS = [
   IB_VIEW_DASHBOARD, IB_VIEW_MONTHLY, IB_VIEW_CATEGORIES, IB_VIEW_TRENDS,
-  IB_VIEW_TRANSFERS, IB_VIEW_RECURRING, IB_VIEW_TRANSACTIONS, IB_VIEW_AI,
+  IB_VIEW_TRANSFERS, IB_VIEW_RECURRING, IB_VIEW_SAVINGS, IB_VIEW_FUN_MONEY,
+  IB_VIEW_TRANSACTIONS, IB_VIEW_AI,
 ];
 
 let currentData = null;
@@ -23,6 +24,8 @@ const IB_NAV_ICONS = {
   "Trends": IB_SVG_OPEN + '<path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/></svg>',
   "Transfers": IB_SVG_OPEN + '<path d="M17 3l4 4-4 4"/><path d="M3 7h18"/><path d="M7 21l-4-4 4-4"/><path d="M21 17H3"/></svg>',
   "Subscriptions": IB_SVG_OPEN + '<path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>',
+  "Savings": IB_SVG_OPEN + '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>',
+  "Fun Money": IB_SVG_OPEN + '<circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/></svg>',
   "Transactions": IB_SVG_OPEN + '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
   "AI & Categories": IB_SVG_OPEN + '<path d="M12 2l1.8 5.7L19 9.5l-5.2 1.8L12 17l-1.8-5.7L5 9.5l5.2-1.8z"/></svg>',
 };

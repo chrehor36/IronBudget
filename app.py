@@ -60,6 +60,18 @@ class Api:
         self._household = settings.save_settings(FOLDER, people)
         return {"ok": True, "budget_title": self._household["budget_title"]}
 
+    def get_savings_goal(self):
+        return settings.load_savings_goal(FOLDER)
+
+    def save_savings_goal(self, goal):
+        return {"ok": True, "goal": settings.save_savings_goal(FOLDER, goal)}
+
+    def get_fun_money(self):
+        return settings.load_fun_money(FOLDER)
+
+    def save_fun_money(self, fun_money):
+        return {"ok": True, "fun_money": settings.save_fun_money(FOLDER, fun_money)}
+
     # ---------- data ----------
     def _rebuild(self, extra_paths=None):
         paths = engine.gather_csv_paths(FOLDER)

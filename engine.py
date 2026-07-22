@@ -466,6 +466,10 @@ def compute_aggregates(rows, detected_trips, home_state):
     for t in spend_rows(True):
         m_exp_adj[mkey(t["date"])] += -t["amt"]
 
+    m_cat_adj = defaultdict(lambda: defaultdict(float))
+    for t in spend_rows(True):
+        m_cat_adj[mkey(t["date"])][t["cat"]] += -t["amt"]
+
     def wk(d): return d - dt.timedelta(days=d.weekday())
     w_adj, w_raw, w_inc = defaultdict(float), defaultdict(float), defaultdict(float)
     for t in spend_rows(True):
@@ -534,7 +538,7 @@ def compute_aggregates(rows, detected_trips, home_state):
         # exactly like the original script did. _jsonify handles defaultdict
         # fine via isinstance(obj, dict) when building the JS-facing copy.
         "cat_tot": cat_tot, "cat_sorted": cat_sorted,
-        "m_inc": m_inc, "m_exp_adj": m_exp_adj, "m_xfer": m_xfer, "months": months,
+        "m_inc": m_inc, "m_exp_adj": m_exp_adj, "m_xfer": m_xfer, "m_cat_adj": m_cat_adj, "months": months,
         "w_adj": w_adj, "w_raw": w_raw, "w_inc": w_inc,
         "recurring": recurring, "subscriptions": subscriptions, "lumpy": lumpy,
         "xfer_by_acct": xfer_by_acct, "xfer_in_by_acct": xfer_in_by_acct,

@@ -257,6 +257,11 @@ dialog.ib-modal .actions { display: flex; justify-content: flex-end; gap: 10px; 
   padding: 4px 8px; border-radius: 6px; font-size: 12.5px;
 }
 .inline-input:focus { outline: none; border-color: var(--accent); }
+select.inline-input, .field select {
+  width: 100%; background: var(--bg-void); border: 1px solid var(--border-hairline); color: var(--ink-primary);
+  padding: 7px 8px; border-radius: 6px; font-size: 13px;
+}
+.field select:focus, select.inline-input:focus { outline: none; border-color: var(--accent); }
 
 .ai-suggestion {
   border-top: 1px solid var(--border-hairline);
