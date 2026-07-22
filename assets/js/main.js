@@ -27,23 +27,56 @@ const IB_NAV_ICONS = {
   "AI & Categories": IB_SVG_OPEN + '<path d="M12 2l1.8 5.7L19 9.5l-5.2 1.8L12 17l-1.8-5.7L5 9.5l5.2-1.8z"/></svg>',
 };
 
+// Plain <div onclick> elements are invisible to screen readers and other
+// assistive tech - no role, not keyboard-reachable. Making every clickable
+// nav item a real accessible control (tabindex + role="button" + Enter/Space
+// support) fixes that for actual screen-reader users, not just automation.
+function makeAccessibleClickable(el, onActivate) {
+  el.setAttribute("role", "button");
+  el.setAttribute("tabindex", "0");
+  el.addEventListener("click", onActivate);
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onActivate();
+    }
+  });
+}
+
 function renderSidebar(hasTransfers) {
   const nav = document.getElementById("nav-items");
   nav.innerHTML = "";
   IB_VIEWS.forEach((view, i) => {
     if (view === IB_VIEW_TRANSFERS && !hasTransfers) return;
+    if (view === IB_VIEW_AI) return; // lives under "Advanced settings & AI" instead
     const item = document.createElement("div");
     item.className = "nav-item" + (i === currentViewIdx ? " active" : "");
     item.title = view.title;
     const icon = IB_NAV_ICONS[view.title] || "";
     item.innerHTML = `<span class="nav-icon">${icon}</span><span class="nav-label">${view.title}</span>`;
-    item.addEventListener("click", () => {
+    makeAccessibleClickable(item, () => {
       currentViewIdx = i;
       renderCurrentView();
       renderSidebar(hasTransfers);
     });
     nav.appendChild(item);
   });
+
+  const advanced = document.getElementById("nav-advanced");
+  if (advanced) {
+    advanced.innerHTML = "";
+    const aiIdx = IB_VIEWS.indexOf(IB_VIEW_AI);
+    const item = document.createElement("div");
+    item.className = "nav-item" + (aiIdx === currentViewIdx ? " active" : "");
+    item.title = IB_VIEW_AI.title;
+    item.innerHTML = `<span class="nav-icon">${IB_NAV_ICONS[IB_VIEW_AI.title] || ""}</span><span class="nav-label">${IB_VIEW_AI.title}</span>`;
+    makeAccessibleClickable(item, () => {
+      currentViewIdx = aiIdx;
+      renderCurrentView();
+      renderSidebar(hasTransfers);
+    });
+    advanced.appendChild(item);
+  }
 }
 
 function wireSidebarToggle() {
@@ -244,7 +277,7 @@ window.__ironbudget.onData = function (result) {
 
 function wireSidebarActions() {
   document.querySelectorAll(".nav-footer .nav-item").forEach((item) => {
-    item.addEventListener("click", async () => {
+    const activate = async () => {
       const action = item.getAttribute("data-action");
       if (action === "edit-household") await openEditHousehold();
       else if (action === "rescan") { const r = await IB_API.call("scan_and_build"); window.__ironbudget.onData(r); }
@@ -255,6 +288,10 @@ function wireSidebarActions() {
           window.__ironbudget.onData(r);
         }
       } else if (action === "export-excel") await doExport();
+    };
+    item.addEventListener("click", activate);
+    item.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); activate(); }
     });
   });
 }

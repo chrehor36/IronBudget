@@ -9,13 +9,16 @@ const IB_VIEW_TRENDS = {
 
     let html = `<div class="page-header"><h1>Spending trends</h1>
       <div class="sub">Weekly spend (Mon-start weeks) and cumulative surplus.</div></div>`;
-    html += `<div class="card"><h2>Weekly spending: raw vs adjusted</h2><div id="trend-weekly"></div></div>`;
+    html += `<div class="card"><h2>Weekly spending</h2><div id="trend-weekly"></div></div>`;
     html += `<div class="card"><h2>Cumulative surplus</h2><div id="trend-cum"></div></div>`;
     container.innerHTML = html;
 
+    // Just one series while trip tracking is disabled - "raw" and
+    // "adjusted" are only different once trip spend gets excluded, and
+    // showing two legend entries for two identical, fully-overlapping
+    // lines was confusing rather than informative.
     IB_CHARTS.lineChart(document.getElementById("trend-weekly"), labels, [
-      { label: "Raw", color: "var(--ink-muted)", values: weeks.map((k) => agg.w_raw[k] || 0) },
-      { label: "Adjusted", color: "var(--series-1)", values: weeks.map((k) => agg.w_adj[k] || 0) },
+      { label: "Weekly spending", color: "var(--series-1)", values: weeks.map((k) => agg.w_adj[k] || 0) },
     ], { labelSkip: Math.max(1, Math.floor(weeks.length / 12)) });
     IB_CHARTS.lineChart(document.getElementById("trend-cum"), labels, [
       { label: "Cumulative surplus", color: "var(--series-2)", values: cumSeries },
